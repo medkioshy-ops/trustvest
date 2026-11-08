@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
+import { AuthOAuthHint } from "@/components/auth-oauth-hint";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -15,6 +16,7 @@ export function JoinForm() {
 
   return (
     <div className="space-y-4">
+      <AuthOAuthHint />
       {oauthError && (
         <p role="alert" className="text-sm text-destructive">
           Google sign-in did not finish. In Supabase, allow this redirect URL and enable sign-ups for new Google accounts.
