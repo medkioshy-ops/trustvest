@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in · TrustVest" };
@@ -9,6 +10,13 @@ export default function LoginPage() {
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm space-y-8">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          Back to home
+        </Link>
         <div className="space-y-2 text-center">
           <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-primary/15 text-primary">
             <ShieldCheck className="size-6" />
