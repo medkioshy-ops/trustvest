@@ -2,6 +2,8 @@
 
 AI-driven, transparent automated investing with a tamper-evident audit ledger. Final-year university project (single-user research prototype, paper trading only).
 
+> **GitHub does not run this app.** The repo page is documentation only. **Do not use GitHub Pages** (`medkioshy-ops.github.io/trustvest`) — that URL only renders this README and will never show login or the dashboard. Use **Vercel’s `*.vercel.app` URL** (after deploy) or **localhost**.
+
 ## What it does
 
 | Req | How it is met | Where |
@@ -36,9 +38,19 @@ Next.js 16 (App Router, TypeScript, Tailwind v4, shadcn/ui) · Supabase (Postgre
 5. **Seed** the login and wallet: `npm run seed`
 6. **Run**: `npm run dev` → http://localhost:3000 → sign in → deposit funds → **Run decision cycle now**.
 
-### Deploy to Vercel
+### Run online (deploy from GitHub — not “Open” on a file)
 
-Import the repo, add the same env vars, deploy. `vercel.json` schedules `/api/cycle` every weekday at 15:00 UTC (US market open +1.5 h); the Hobby plan allows one cron run per day. Vercel sends `CRON_SECRET` automatically.
+GitHub stores the code; it does not execute Next.js. To get a public app URL:
+
+1. Go to [vercel.com](https://vercel.com) and sign in with the same GitHub account (**medkioshy-ops**).
+2. **Add New… → Project** → import **medkioshy-ops/trustvest** (framework: Next.js — not “Other”).
+3. **Environment variables** (check **Production**): copy every value from local `.env.local` — at minimum `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`. Missing vars → blank or 500 errors on `/`.
+4. **Deploy**, then open the URL from Vercel **Deployments → Visit** (e.g. `https://trustvest-xxx.vercel.app/login`). If you only see the README table, you are on **GitHub** or **GitHub Pages**, not Vercel.
+5. **Supabase** → Authentication → URL configuration → set **Site URL** to your Vercel URL and add `https://<your-app>.vercel.app/**` under **Redirect URLs** (required for sign-in).
+6. Repo **Settings → Pages** on GitHub: turn Pages **off** if enabled (it conflicts with what students expect and only publishes the README).
+7. Your Supabase user already exists; you do **not** need `npm run seed` on Vercel for the same project.
+
+`vercel.json` schedules `/api/cycle` every weekday at 15:00 UTC (Hobby plan: one cron run per day). Set `CRON_SECRET` in the Vercel dashboard.
 
 ## Scripts
 
