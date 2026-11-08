@@ -1,6 +1,7 @@
 "use server";
 import { refresh } from "next/cache";
 import { requireUser } from "@/lib/auth";
+import { requireUserWallet } from "@/lib/wallet-scope";
 import { runCycle, type CycleReport } from "@/lib/cycle";
 import { appendLedgerEntry, snapshotTransaction, verifyLedger, type VerificationResult } from "@/lib/ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -10,9 +11,10 @@ import type { Transaction } from "@/lib/types";
 export type CycleState = { report?: CycleReport; error?: string };
 
 export async function runCycleAction(): Promise<CycleState> {
-  await requireUser();
+  const user = await requireUser();
+  const wallet = await requireUserWallet(user);
   try {
-    const report = await runCycle(createAdminClient());
+    const report = await runCycle(createAdminClient(), wallet.wallet_id);
     refresh();
     return { report };
   } catch (e) {
@@ -23,7 +25,7 @@ export async function runCycleAction(): Promise<CycleState> {
 export type DepositState = { ok?: string; error?: string };
 
 export async function depositAction(_prev: DepositState, formData: FormData): Promise<DepositState> {
-  await requireUser();
+  const user = await requireUser();
   const amount = Number(String(formData.get("amount") ?? "").replace(/[, ]/g, ""));
   if (!Number.isFinite(amount) || amount <= 0) return { error: "Enter an amount greater than 0." };
   if (amount > 1_000_000) return { error: "Maximum single deposit is 1,000,000." };
@@ -31,7 +33,7 @@ export async function depositAction(_prev: DepositState, formData: FormData): Pr
 
   try {
     const db = createAdminClient();
-    const { data, error } = await db.rpc("make_deposit", { p_amount: amount });
+    const { data, error } = await db.rpc("make_deposit", { p_user_id: user.id, p_amount: amount });
     if (error) return { error: error.message };
     const tx = data as Transaction;
     await appendLedgerEntry(db, {

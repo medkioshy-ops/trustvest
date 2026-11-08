@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ShieldCheck } from "lucide-react";
 import { LoginForm } from "./login-form";
 
@@ -18,7 +19,9 @@ export default function LoginPage() {
           </p>
         </div>
         <div className="rounded-xl border bg-card p-6">
-          <LoginForm />
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
+            <LoginForm />
+          </Suspense>
         </div>
         <p className="text-center text-xs text-muted-foreground">
           Single-user research prototype · paper trading only

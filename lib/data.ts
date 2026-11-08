@@ -5,7 +5,7 @@ import { computeHoldings, type Holding } from "./portfolio";
 import type { AiDecision, Transaction, Wallet } from "./types";
 
 export async function loadWallet(db: SupabaseClient): Promise<Wallet | null> {
-  const { data, error } = await db.from("wallet").select("*").limit(1).maybeSingle();
+  const { data, error } = await db.from("wallet").select("*").maybeSingle();
   if (error) throw new Error(`Reading wallet failed: ${error.message}`);
   return data as Wallet | null;
 }

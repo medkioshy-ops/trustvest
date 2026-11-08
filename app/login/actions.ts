@@ -12,7 +12,7 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: "Those details didn't match the TrustVest account.", email };
-  redirect("/");
+  redirect("/dashboard");
 }
 
 export async function signOut() {

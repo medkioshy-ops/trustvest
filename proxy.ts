@@ -1,7 +1,13 @@
 // Next.js 16 "proxy" (formerly middleware): refresh the Supabase session cookie on
-// every request and send signed-out visitors to /login (FR1).
+// every request and gate routes by sign-in state.
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+
+const PUBLIC_PATHS = new Set(["/", "/join", "/login", "/auth/callback"]);
+
+function isPublicPath(path: string) {
+  return PUBLIC_PATHS.has(path) || path.startsWith("/auth/callback");
+}
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -26,15 +32,15 @@ export async function proxy(request: NextRequest) {
   const signedIn = Boolean(data?.claims?.sub);
   const path = request.nextUrl.pathname;
 
-  if (!signedIn && path !== "/login") {
+  if (!signedIn && !isPublicPath(path)) {
     const to = request.nextUrl.clone();
     to.pathname = "/login";
     to.search = "";
     return NextResponse.redirect(to);
   }
-  if (signedIn && path === "/login") {
+  if (signedIn && (path === "/login" || path === "/join")) {
     const to = request.nextUrl.clone();
-    to.pathname = "/";
+    to.pathname = "/dashboard";
     to.search = "";
     return NextResponse.redirect(to);
   }

@@ -25,10 +25,10 @@ export interface CycleReport {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-async function loadState(db: SupabaseClient) {
+async function loadState(db: SupabaseClient, walletId: string) {
   const [{ data: wallet, error: wErr }, { data: txs, error: tErr }] = await Promise.all([
-    db.from("wallet").select("*").limit(1).maybeSingle(),
-    db.from("transaction").select("*").in("status", ["pending", "released"]),
+    db.from("wallet").select("*").eq("wallet_id", walletId).maybeSingle(),
+    db.from("transaction").select("*").eq("wallet_id", walletId).in("status", ["pending", "released"]),
   ]);
   if (wErr) throw new Error(`Reading wallet failed: ${wErr.message}`);
   if (!wallet) throw new Error("No wallet found — run `npm run seed` first");
@@ -72,8 +72,8 @@ async function failTrade(db: SupabaseClient, tx: Transaction, reason: string, or
   return `failed: ${reason}`;
 }
 
-async function reconcilePending(db: SupabaseClient, market: MarketProvider, report: CycleReport) {
-  const { data, error } = await db.from("transaction").select("*").eq("status", "pending");
+async function reconcilePending(db: SupabaseClient, walletId: string, market: MarketProvider, report: CycleReport) {
+  const { data, error } = await db.from("transaction").select("*").eq("wallet_id", walletId).eq("status", "pending");
   if (error) throw new Error(`Reading pending orders failed: ${error.message}`);
   for (const tx of (data ?? []) as Transaction[]) {
     try {
@@ -91,7 +91,11 @@ async function reconcilePending(db: SupabaseClient, market: MarketProvider, repo
   }
 }
 
-export async function runCycle(db: SupabaseClient, market: MarketProvider = getMarketProvider()): Promise<CycleReport> {
+export async function runCycle(
+  db: SupabaseClient,
+  walletId: string,
+  market: MarketProvider = getMarketProvider(),
+): Promise<CycleReport> {
   const cfg = getEngineConfig();
   const watchlist = getWatchlist();
   const report: CycleReport = {
@@ -103,13 +107,13 @@ export async function runCycle(db: SupabaseClient, market: MarketProvider = getM
     errors: [],
   };
 
-  await reconcilePending(db, market, report);
+  await reconcilePending(db, walletId, market, report);
 
   const barsStart = new Date(Date.now() - 60 * 86_400_000); // ~40 trading days
   const newsSince = new Date(Date.now() - cfg.newsLookbackHours * 3_600_000);
 
   // Prices for every asset we hold or watch, so portfolio value is complete.
-  const initial = await loadState(db);
+  const initial = await loadState(db, walletId);
   const held = [...computeHoldings(initial.transactions).values()].filter((h) => h.quantity > 0).map((h) => h.asset);
   const prices: Record<string, number> = {};
   for (const asset of new Set([...watchlist, ...held])) {
@@ -130,7 +134,7 @@ export async function runCycle(db: SupabaseClient, market: MarketProvider = getM
         continue;
       }
 
-      const { wallet, transactions } = await loadState(db);
+      const { wallet, transactions } = await loadState(db, walletId);
       const holdings = computeHoldings(transactions);
       const pending = transactions.filter((t) => t.status === "pending");
       const reserved = pending.filter((t) => t.type === "buy").reduce((s, t) => s + Number(t.amount), 0);

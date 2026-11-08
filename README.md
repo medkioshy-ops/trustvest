@@ -8,8 +8,8 @@ AI-driven, transparent automated investing with a tamper-evident audit ledger. F
 
 | Req | How it is met | Where |
 | --- | --- | --- |
-| FR1 | Supabase Auth email/password, one seeded account; `proxy.ts` sends signed-out visitors to `/login` | `app/login`, `proxy.ts`, `scripts/seed.mjs` |
-| FR2 | Dashboard shows portfolio value, wallet cash and holdings (average-cost P/L) | `app/(app)/page.tsx`, `lib/portfolio.ts` |
+| FR1 | Supabase Auth (email + Google), admin via `npm run seed`; public landing at `/`; `proxy.ts` gates app routes | `app/`, `app/login`, `app/join`, `app/auth/callback`, `proxy.ts`, `scripts/seed.mjs` |
+| FR2 | Dashboard shows portfolio value, wallet cash and holdings (average-cost P/L) | `app/(app)/dashboard/page.tsx`, `lib/portfolio.ts` |
 | FR3 | Daily bars + latest trade from Alpaca Market Data (free IEX feed; crypto included) | `lib/market/alpaca.ts` |
 | FR4 | Alpaca News headlines scored locally with VADER | `lib/sentiment.ts` |
 | FR5 | Momentum (5/20-day SMA gap + 5-day return) × 0.6 + sentiment × 0.4 → buy/hold/sell with a written reason and the full inputs stored | `lib/engine.ts` |
@@ -31,7 +31,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4, shadcn/ui) · Supabase (Postgre
 
 1. **Install**: `npm install`
 2. **Supabase project** (free): create one at supabase.com.
-   - SQL Editor → run `supabase/migrations/20261025000001_core_schema.sql`, then `…000002_security_realtime.sql`.
+   - SQL Editor → run `20261025000001_core_schema.sql`, `…000002_security_realtime.sql`, then `…000003_per_user_wallet.sql`.
    - Authentication → Sign In / Providers → turn **off** "Allow new users to sign up".
 3. **Alpaca** (optional, free): app.alpaca.markets → switch to **Paper** → generate API keys.
 4. **Env**: copy `.env.example` to `.env.local` and fill it in.

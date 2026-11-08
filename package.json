@@ -10,6 +10,7 @@
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
     "seed": "node --env-file=.env.local scripts/seed.mjs",
+    "spot-check": "node scripts/spot-check.mjs",
     "test:integration": "vitest run tests/integration"
   },
   "dependencies": {

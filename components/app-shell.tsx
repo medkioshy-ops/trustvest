@@ -16,7 +16,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
             <ShieldCheck className="size-5 text-primary" />
             TrustVest
           </Link>
