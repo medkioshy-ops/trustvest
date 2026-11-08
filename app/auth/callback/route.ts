@@ -7,9 +7,10 @@ import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
+  const oauthError = searchParams.get("error");
   const next = searchParams.get("next") ?? "/dashboard";
 
-  if (!code) {
+  if (oauthError || !code) {
     return NextResponse.redirect(`${origin}/login?error=auth`);
   }
 

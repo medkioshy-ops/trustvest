@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { JoinForm } from "./join-form";
 
@@ -24,7 +25,9 @@ export default function JoinPage() {
           <p className="text-sm text-muted-foreground">Create an account to access the auditable AI investing dashboard.</p>
         </div>
         <div className="rounded-xl border bg-card p-6">
-          <JoinForm />
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
+            <JoinForm />
+          </Suspense>
         </div>
         <p className="text-center text-xs text-muted-foreground">Paper trading research prototype — not financial advice.</p>
       </div>

@@ -28,8 +28,11 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const { data } = await supabase.auth.getClaims();
-  const signedIn = Boolean(data?.claims?.sub);
+  // Must match `getUser()` in Server Components (requireUser) — getClaims alone can disagree and cause /login ↔ /dashboard loops.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const signedIn = Boolean(user);
   const path = request.nextUrl.pathname;
 
   if (!signedIn && !isPublicPath(path)) {

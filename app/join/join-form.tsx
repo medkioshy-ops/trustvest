@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,16 @@ import { signUp, type JoinState } from "./actions";
 
 export function JoinForm() {
   const [state, action, pending] = useActionState<JoinState, FormData>(signUp, {});
+  const params = useSearchParams();
+  const oauthError = params.get("error") === "auth";
 
   return (
     <div className="space-y-4">
+      {oauthError && (
+        <p role="alert" className="text-sm text-destructive">
+          Google sign-in did not finish. In Supabase, allow this redirect URL and enable sign-ups for new Google accounts.
+        </p>
+      )}
       <GoogleSignInButton label="Sign up with Google" />
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
