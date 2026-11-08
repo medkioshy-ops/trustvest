@@ -10,6 +10,25 @@ function isPublicPath(path: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  try {
+    return await handleProxy(request);
+  } catch {
+    return NextResponse.next({ request });
+  }
+}
+
+function hasSupabaseSessionCookie(request: NextRequest) {
+  return request.cookies.getAll().some((c) => /^sb-.*-auth-token$/.test(c.name) || c.name.includes("auth-token"));
+}
+
+async function handleProxy(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  // Anonymous visitors on public pages: skip Supabase on the edge (avoids 500s when env/network misbehaves on Vercel previews).
+  if (isPublicPath(path) && !hasSupabaseSessionCookie(request)) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -37,7 +56,6 @@ export async function proxy(request: NextRequest) {
   } catch {
     signedIn = false;
   }
-  const path = request.nextUrl.pathname;
 
   if (!signedIn && !isPublicPath(path)) {
     const to = request.nextUrl.clone();
