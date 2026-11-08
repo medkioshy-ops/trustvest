@@ -1,0 +1,65 @@
+# TrustVest
+
+AI-driven, transparent automated investing with a tamper-evident audit ledger. Final-year university project (single-user research prototype, paper trading only).
+
+## What it does
+
+| Req | How it is met | Where |
+| --- | --- | --- |
+| FR1 | Supabase Auth email/password, one seeded account; `proxy.ts` sends signed-out visitors to `/login` | `app/login`, `proxy.ts`, `scripts/seed.mjs` |
+| FR2 | Dashboard shows portfolio value, wallet cash and holdings (average-cost P/L) | `app/(app)/page.tsx`, `lib/portfolio.ts` |
+| FR3 | Daily bars + latest trade from Alpaca Market Data (free IEX feed; crypto included) | `lib/market/alpaca.ts` |
+| FR4 | Alpaca News headlines scored locally with VADER | `lib/sentiment.ts` |
+| FR5 | Momentum (5/20-day SMA gap + 5-day return) × 0.6 + sentiment × 0.4 → buy/hold/sell with a written reason and the full inputs stored | `lib/engine.ts` |
+| FR6 | Market orders on the Alpaca **paper** API; pending → verified → released settlement | `lib/cycle.ts`, `settle_transaction()` SQL |
+| FR7 | Every deposit, decision and settlement is sealed in a SHA-256 hash chain | `lib/ledger/` |
+| FR8 | "Verify now" + `GET /api/ledger/verify` recompute the chain **and** compare each sealed snapshot to the live rows, naming the exact entry and field | `lib/ledger/index.ts` |
+| FR9 | AI vs equal-weight buy-and-hold vs cash, 1W/1M/3M/All | `lib/performance.ts` |
+| NFR2 | Supabase Realtime pushes changes; the page refreshes itself (indicator top-right) | `components/live-refresh.tsx` |
+| NFR4 | Append-only triggers + coverage check (every decision/finished trade must have an entry) | migrations, `verifyLedger()` |
+| NFR5 | All configuration through env vars; same build runs locally and on Vercel | `.env.example` |
+
+No Alpaca keys yet? The app runs in a clearly labelled **simulated market mode** (deterministic prices, sample headlines, instant fills) so you can develop and demo the full pipeline. Every decision made this way is tagged `simulated` in the database and UI.
+
+## Stack
+
+Next.js 16 (App Router, TypeScript, Tailwind v4, shadcn/ui) · Supabase (Postgres, Auth, Realtime) · Alpaca paper trading · VADER · Recharts · Vitest. Hosted on Vercel's free tier. Recurring cost: R0.
+
+## Setup (about 15 minutes)
+
+1. **Install**: `npm install`
+2. **Supabase project** (free): create one at supabase.com.
+   - SQL Editor → run `supabase/migrations/20261025000001_core_schema.sql`, then `…000002_security_realtime.sql`.
+   - Authentication → Sign In / Providers → turn **off** "Allow new users to sign up".
+3. **Alpaca** (optional, free): app.alpaca.markets → switch to **Paper** → generate API keys.
+4. **Env**: copy `.env.example` to `.env.local` and fill it in.
+5. **Seed** the login and wallet: `npm run seed`
+6. **Run**: `npm run dev` → http://localhost:3000 → sign in → deposit funds → **Run decision cycle now**.
+
+### Deploy to Vercel
+
+Import the repo, add the same env vars, deploy. `vercel.json` schedules `/api/cycle` every weekday at 15:00 UTC (US market open +1.5 h); the Hobby plan allows one cron run per day. Vercel sends `CRON_SECRET` automatically.
+
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` / `build` / `start` | Next.js |
+| `npm test` | Unit tests (hash chain, engine, sentiment, holdings, benchmark, simulator) |
+| `TEST_DATABASE_URL=postgres://… npm run test:integration` | End-to-end cycle against the real SQL schema on any Postgres 15+ (it **drops the `public` schema** — use a throwaway database) |
+| `npm run typecheck` / `lint` | Static checks |
+| `npm run seed` | Create/refresh the single user and the wallet |
+
+## Demonstrating tamper detection
+
+`supabase/demo/tamper-demo.sql` contains three attacks (rewrite a decision's reasoning, inflate a sealed amount, delete a mid-chain entry). Run one in the Supabase SQL editor, then press **Verify now** on the Ledger page: each is reported with the entry number and the changed field. Use a demo project — the damage is permanent.
+
+## Folder structure
+
+- `app/` — routes: `login/`, `(app)/` (dashboard, `decisions/`, `ledger/`, server actions), `api/cycle`, `api/ledger/verify`
+- `components/` — UI (`ui/` holds shadcn-style primitives)
+- `lib/` — engine, sentiment, market providers, ledger, portfolio, performance, Supabase clients
+- `supabase/migrations/` — schema, constraints, triggers, RLS; `supabase/demo/` — tamper script
+- `tests/` — Vitest unit tests; `tests/integration/` — Postgres end-to-end; `tests/e2e/` — local Supabase mock used for browser smoke tests
+
+See `DEVLOG.md` for what each increment built, how it was verified, and every deliberate deviation from the Phase 3 design.
