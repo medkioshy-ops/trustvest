@@ -14,7 +14,7 @@ export function VerifyPanel({ initial, compact = false }: { initial: Result; com
 
   const rerun = (
     <Button variant="outline" size={compact ? "sm" : "lg"} disabled={pending} onClick={() => start(async () => setResult(await verifyLedgerAction()))}>
-      {pending ? "Verifying…" : "Verify now"}
+      {pending ? "Checking…" : "Check again"}
     </Button>
   );
 
@@ -40,10 +40,10 @@ export function VerifyPanel({ initial, compact = false }: { initial: Result; com
         {result.ok ? <ShieldCheck className="size-7 shrink-0 text-primary" /> : <ShieldAlert className="size-7 shrink-0 text-red-400" />}
         <div>
           <p className={`text-lg font-semibold ${result.ok ? "" : "text-red-300"}`}>
-            {result.ok ? "Ledger intact" : `Tampering detected — ${result.problems.length} problem${result.problems.length === 1 ? "" : "s"}`}
+            {result.ok ? "All records untouched ✓" : `Tampering detected — ${result.problems.length} problem${result.problems.length === 1 ? "" : "s"}`}
           </p>
           <p className="text-xs text-muted-foreground">
-            {result.entryCount} entries checked at {time}
+            {result.entryCount} record{result.entryCount === 1 ? "" : "s"} checked at {time}
             {!compact && result.headHash ? ` · head ${shortHash(result.headHash)}` : ""}
           </p>
         </div>
