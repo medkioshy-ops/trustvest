@@ -25,8 +25,11 @@ export default async function DecisionsPage({ searchParams }: PageProps<"/decisi
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Decision log</h1>
-          <p className="text-sm text-muted-foreground">Every decision the engine made, with the reason and the exact inputs it used.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">AI decisions</h1>
+          <p className="text-sm text-muted-foreground">
+            Everything the AI decided for your account, newest first. Each one starts with a plain-English reason; open &ldquo;Show the full
+            reasoning&rdquo; for the exact numbers and news it used.
+          </p>
         </div>
         <nav className="flex gap-1" aria-label="Filter by action">
           {FILTERS.map((f) => (
@@ -36,7 +39,7 @@ export default async function DecisionsPage({ searchParams }: PageProps<"/decisi
               aria-current={f === filter ? "true" : undefined}
               className={cn("rounded-md px-3 py-1.5 text-sm capitalize", f === filter ? "bg-muted" : "text-muted-foreground hover:text-foreground")}
             >
-              {f} <span className="text-xs text-muted-foreground">{counts[f]}</span>
+              {({ all: "All", buy: "Bought", sell: "Sold", hold: "Waited" } as const)[f]} <span className="text-xs text-muted-foreground">{counts[f]}</span>
             </Link>
           ))}
         </nav>

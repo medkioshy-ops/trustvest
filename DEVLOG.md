@@ -49,3 +49,15 @@ Material for the project report. One entry per completed increment.
 - **New page `/ai` — "Is the AI working?"** (1) Backtest: the production `decide()` replayed once per daily bar over 3/6/12 months vs equal-weight buy-and-hold, with return, worst drop, win rate of closed trades; (2) live track record: did each executed BUY/SELL's price move its way (unmoved calls are "waiting", not wrong); (3) consistency: every stored decision's score is recomputed from its stored inputs and its action checked against the rules; (4) score history across cycles vs the trade lines.
 - **Limits stated on the page:** the backtest treats sentiment as neutral (historical headlines are not stored) and fills at the daily close without fees; in simulated mode it runs on generated prices.
 - **Verified:** 38 unit + 12 integration tests (incl. a two-account isolation test that also checks RLS as the signed-in role), lint clean, `next build`, browser run of deposit → two cycles → dashboard, /ai and ledger with no console errors.
+
+## 2026-11-11 — Step 4: beginner-friendly UX and guided tour
+
+- **What was built:**
+  - A 10-step guided tour (`components/tutorial.tsx`) that opens automatically on a user's first dashboard visit, highlights each part of the screen it explains, and can be replayed any time from the "Guide" button in the header. Keyboard: ←/→ to move, Esc to close.
+  - A "Getting started" checklist (`components/getting-started.tsx`): add practice money → run the AI → check the tamper seal; it disappears once the first two are done.
+  - Plain-language layer (`lib/plain-language.ts`): company names instead of tickers (Apple (AAPL)), a glossary behind small "?" tips (`components/info-tip.tsx`) for every finance term (portfolio, momentum, sentiment, signal strength, backtest, drawdown, ledger…), and a one-sentence plain-English summary on every decision card, with the full reasoning and numbers folded away under "Show the full reasoning".
+  - Renamed labels across the dashboard, decisions, ledger and "Is the AI working?" pages (e.g. "Cash not yet invested", "Tamper check", "What the AI thinks right now", "AI vs doing nothing", ledger types "money in / AI decision / trade result").
+  - The /ai verdict no longer says "rising market" when buy-and-hold actually fell.
+  - Mobile: closed tooltips no longer widen the page (which made phones zoom out), and the navigation moves to its own scrollable row on small screens.
+  - Fix: a brand-new account sometimes saw "couldn't open your practice wallet" on the first visit — re-reading the wallet in the same render returned React's memoised empty result; the dashboard now uses the row `ensureWalletRow` returns.
+- **How it was verified/tested:** eslint, typecheck, unit tests and `next build` pass. Playwright on a production build (server in UTC, browser in Africa/Johannesburg): tour auto-opens, all 10 steps advance and highlight, it stays closed after reload, deposit + "Run the AI now" work, no console errors on any page; on an iPhone-13 viewport no page is wider than the screen.

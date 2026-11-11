@@ -8,9 +8,10 @@ export function DepositForm({ currency }: { currency: string }) {
   const [state, action, pending] = useActionState<DepositState, FormData>(depositAction, {});
   return (
     <form action={action} className="space-y-2">
-      <Label htmlFor="amount">Add funds to the AI wallet ({currency})</Label>
+      <Label htmlFor="amount">Add practice money ({currency})</Label>
+      <p className="text-xs text-muted-foreground">Pretend money for the AI to invest — nothing real is charged.</p>
       <div className="flex gap-2">
-        <Input id="amount" name="amount" inputMode="decimal" placeholder="1000.00" required />
+        <Input id="amount" name="amount" inputMode="decimal" placeholder="e.g. 10000" required />
         <Button type="submit" variant="outline" size="lg" disabled={pending}>
           {pending ? "Adding…" : "Deposit"}
         </Button>

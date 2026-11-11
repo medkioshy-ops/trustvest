@@ -20,6 +20,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkConsistency, trackRecord } from "@/lib/track-record";
 import type { AiDecision } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { InfoTip } from "@/components/info-tip";
 import { getUserWallet } from "@/lib/wallet-scope";
 
 export const metadata: Metadata = { title: "Is the AI working? · TrustVest" };
@@ -48,14 +49,17 @@ export default async function AiCheckPage({ searchParams }: PageProps<"/ai">) {
       <div className="max-w-3xl space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Is the AI working?</h1>
         <p className="text-sm text-muted-foreground">
-          &ldquo;Working&rdquo; means two different things: it does what its rules say (checked below on every decision), and those rules make
-          money compared with doing nothing smart (tested on a year of history, then tracked live). Each check states its limits.
+          Two questions: does the AI follow its own rules every time, and do those rules actually do better than simply buying and holding?
+          Below, the AI is tested on real past prices, checked against your live trades, and every decision is re-checked. Hover the{" "}
+          <span className="font-medium text-foreground">?</span> icons for plain-English explanations.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>1 · Backtest: the same engine replayed on real past prices</CardTitle>
+          <CardTitle className="flex items-center gap-1.5">
+            1 · Practice run on real past prices <InfoTip term="backtest" />
+          </CardTitle>
           <nav className="flex gap-1" aria-label="Backtest window">
             {(Object.keys(WINDOWS) as WindowKey[]).map((k) => (
               <Link
@@ -80,7 +84,7 @@ export default async function AiCheckPage({ searchParams }: PageProps<"/ai">) {
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>2 · Live track record of real trades</CardTitle>
+            <CardTitle>2 · How its real (paper) trades turned out</CardTitle>
           </CardHeader>
           <CardContent>
             <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-muted/40" />}>
@@ -90,11 +94,13 @@ export default async function AiCheckPage({ searchParams }: PageProps<"/ai">) {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>3 · Does every decision follow its own rules?</CardTitle>
+            <CardTitle className="flex items-center gap-1.5">
+              3 · Does every decision follow its own rules? <InfoTip term="score" align="right" />
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {consistency.checked === 0 ? (
-              <p className="text-muted-foreground">No decisions yet — run a decision cycle from the dashboard.</p>
+              <p className="text-muted-foreground">No decisions yet — press &ldquo;Run the AI now&rdquo; on the dashboard.</p>
             ) : (
               <>
                 <p className="text-3xl font-semibold tabular-nums">
@@ -126,7 +132,7 @@ export default async function AiCheckPage({ searchParams }: PageProps<"/ai">) {
 
       <Card>
         <CardHeader>
-          <CardTitle>4 · How its scores moved across your decision cycles</CardTitle>
+          <CardTitle>4 · How the AI&rsquo;s opinion of each investment changed over time</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <ScoreHistory decisions={decisions} assets={watchlist} buy={cfg.thresholds.buy} sell={cfg.thresholds.sell} />
@@ -192,15 +198,15 @@ async function Backtest({ days, label }: { days: number; label: string }) {
       )}
       <div className="grid gap-4 text-sm sm:grid-cols-4">
         <Stat label={`AI rules, ${label}`} value={pct(r.ai.returnPct)} sub={`${money(r.startCapital, "USD")} → ${money(r.ai.finalValue, "USD")}`} />
-        <Stat label="Buy & hold the watchlist" value={pct(r.benchmark.returnPct)} sub={`→ ${money(r.benchmark.finalValue, "USD")}`} />
+        <Stat label="If you'd just bought & held" value={pct(r.benchmark.returnPct)} sub={`→ ${money(r.benchmark.finalValue, "USD")}`} />
         <Stat
-          label="Worst drop (AI vs buy & hold)"
+          label="Worst fall from a high (AI vs buy & hold)"
           value={`${r.ai.maxDrawdownPct.toFixed(1)}% vs ${r.benchmark.maxDrawdownPct.toFixed(1)}%`}
           sub={lessPain >= 0 ? `AI fell ${lessPain.toFixed(1)} pts less` : `AI fell ${(-lessPain).toFixed(1)} pts more`}
           tone={lessPain >= 0 ? "text-emerald-300" : "text-orange-300"}
         />
         <Stat
-          label="Closed trades won"
+          label="Trades that made money"
           value={r.winRatePct === null ? "—" : `${r.winningTrades} / ${r.closedTrades}`}
           sub={`${r.trades.length} trades · avg ${r.avgInvestedPct.toFixed(0)}% invested`}
         />
@@ -208,7 +214,11 @@ async function Backtest({ days, label }: { days: number; label: string }) {
       <p className={cn("text-sm font-medium", edge >= 0 ? "text-emerald-300" : "text-orange-300")}>
         Verdict: over the last {label} the AI&rsquo;s rules {edge >= 0 ? "beat" : "trailed"} buy-and-hold by {Math.abs(edge).toFixed(2)} percentage
         points{lessPain >= 0 ? `, with a smaller worst drop` : `, with a bigger worst drop`}.
-        {edge < 0 && r.avgInvestedPct < 50 && " It kept most money in cash, which limits both gains and losses in a rising market."}
+        {edge < 0 &&
+          r.avgInvestedPct < 50 &&
+          (r.benchmark.returnPct > 0
+            ? " It kept most money in cash, which protects against falls but misses part of a rising market."
+            : " It kept most money in cash, which softened the falls; its own losses came from trades that reversed soon after it bought.")}
       </p>
       <PerformanceChart points={r.points} currency="USD" labels={{ ai: "AI rules (backtest)", benchmark: "Buy & hold", cash: "Starting capital" }} />
       <p className="text-xs text-muted-foreground">
