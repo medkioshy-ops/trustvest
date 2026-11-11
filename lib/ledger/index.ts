@@ -36,6 +36,7 @@ export function snapshotTransaction(t: Transaction) {
 export function snapshotDecision(d: AiDecision) {
   return {
     decision_id: d.decision_id,
+    wallet_id: d.wallet_id,
     transaction_id: d.transaction_id,
     asset: d.asset,
     action: d.action,
@@ -51,13 +52,20 @@ export function snapshotDecision(d: AiDecision) {
 // ---------------------------------------------------------------------------
 export async function appendLedgerEntry(
   db: SupabaseClient,
-  entry: { kind: LedgerKind; transaction_id?: string; decision_id?: string; payload: Record<string, unknown> },
+  entry: {
+    walletId: string;
+    kind: LedgerKind;
+    transaction_id?: string;
+    decision_id?: string;
+    payload: Record<string, unknown>;
+  },
 ): Promise<LedgerEntry> {
   const payload = normalisePayload(entry.payload);
   for (let attempt = 0; attempt < 5; attempt++) {
     const { data: head, error: headErr } = await db
       .from("ledger_entry")
       .select("hash")
+      .eq("wallet_id", entry.walletId)
       .order("seq", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -70,6 +78,7 @@ export async function appendLedgerEntry(
     const { data, error } = await db
       .from("ledger_entry")
       .insert({
+        wallet_id: entry.walletId,
         kind: entry.kind,
         transaction_id: entry.transaction_id ?? null,
         decision_id: entry.decision_id ?? null,
@@ -81,8 +90,9 @@ export async function appendLedgerEntry(
       .select()
       .single();
     if (!error) return data as LedgerEntry;
-    // 23505 on previous_hash: another writer appended first — re-read the head and retry.
-    if (error.code === "23505" && error.message.includes("previous_hash")) continue;
+    // 23505 on (wallet_id, previous_hash): another writer appended to this wallet's chain first —
+    // re-read the head and retry.
+    if (error.code === "23505" && /previous_hash|wallet_prev/.test(error.message)) continue;
     throw new Error(`Ledger append failed: ${error.message}`);
   }
   throw new Error("Ledger append failed after 5 attempts (heavy contention)");
@@ -106,13 +116,14 @@ export interface VerificationResult {
   problems: LedgerProblem[];
 }
 
-async function fetchAll<T>(db: SupabaseClient, table: string, order: string): Promise<T[]> {
+async function fetchAll<T>(db: SupabaseClient, table: string, order: string, walletId: string): Promise<T[]> {
   const page = 1000;
   const out: T[] = [];
   for (let from = 0; ; from += page) {
     const { data, error } = await db
       .from(table)
       .select("*")
+      .eq("wallet_id", walletId)
       .order(order, { ascending: true })
       .range(from, from + page - 1);
     if (error) throw new Error(`Reading ${table} failed: ${error.message}`);
@@ -127,11 +138,12 @@ async function fetchAll<T>(db: SupabaseClient, table: string, order: string): Pr
  *    (catches someone editing the source tables while leaving the ledger alone).
  * 3. Coverage check — every decision and every finished transaction must have an entry (NFR4).
  */
-export async function verifyLedger(db: SupabaseClient): Promise<VerificationResult> {
+/** Verifies ONE wallet's chain. Each wallet has its own genesis-linked chain. */
+export async function verifyLedger(db: SupabaseClient, walletId: string): Promise<VerificationResult> {
   const [entries, decisions, transactions] = await Promise.all([
-    fetchAll<LedgerEntry>(db, "ledger_entry", "seq"),
-    fetchAll<AiDecision>(db, "ai_decision", "created_at"),
-    fetchAll<Transaction>(db, "transaction", "created_at"),
+    fetchAll<LedgerEntry>(db, "ledger_entry", "seq", walletId),
+    fetchAll<AiDecision>(db, "ai_decision", "created_at", walletId),
+    fetchAll<Transaction>(db, "transaction", "created_at", walletId),
   ]);
 
   const problems: LedgerProblem[] = verifyChain(entries.map((e) => ({ ...e, seq: Number(e.seq) })));
