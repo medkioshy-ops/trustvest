@@ -27,7 +27,13 @@ export function VerifyPanel({ initial, compact = false }: { initial: Result; com
     );
   }
 
-  const time = new Date(result.checkedAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const time = new Date(result.checkedAt).toLocaleTimeString("en-ZA", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    // Fixed zone so the server-rendered and hydrated text match.
+    timeZone: process.env.NEXT_PUBLIC_DISPLAY_TIMEZONE || "Africa/Johannesburg",
+  });
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
