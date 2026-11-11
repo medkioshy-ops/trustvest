@@ -7,14 +7,16 @@ import { PerformanceChart } from "@/components/performance-chart";
 import { RunCycleButton } from "@/components/run-cycle-button";
 import { VerifyPanel } from "@/components/verify-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getWatchlist } from "@/lib/config";
+import { AllocationBars } from "@/components/allocation-bars";
+import { SignalBoard } from "@/components/signal-board";
+import { getEngineConfig, getWatchlist } from "@/lib/config";
 import { loadDecisions, loadTransactions, loadWallet, priceHoldings } from "@/lib/data";
 import { money, pct, qty, signedMoney } from "@/lib/format";
 import { verifyLedger } from "@/lib/ledger";
 import { getMarketProvider } from "@/lib/market";
 import { computePerformance, PERIODS, type PeriodKey } from "@/lib/performance";
 import { createClient } from "@/lib/supabase/server";
-import type { Transaction } from "@/lib/types";
+import type { AiDecision, Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Dashboard · TrustVest" };
@@ -28,17 +30,25 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   if (!wallet) return <SetupNeeded />;
 
   const [transactions, decisions, verification] = await Promise.all([
-    loadTransactions(db),
-    loadDecisions(db, 6),
-    verifyLedger(db).catch((e: Error) => ({ error: e.message })),
+    loadTransactions(db, wallet.wallet_id),
+    loadDecisions(db, wallet.wallet_id, 40),
+    verifyLedger(db, wallet.wallet_id).catch((e: Error) => ({ error: e.message })),
   ]);
   const holdings = await priceHoldings(transactions);
   const holdingsValue = holdings.reduce((s, h) => s + h.value, 0);
   const total = Number(wallet.balance) + holdingsValue;
   const reserved = transactions.filter((t) => t.status === "pending" && t.type === "buy").reduce((s, t) => s + Number(t.amount), 0);
   const txById = new Map(transactions.map((t) => [t.transaction_id, t]));
-  const [latest, ...recent] = decisions;
+  const [latest, ...rest] = decisions;
+  const recent = rest.slice(0, 5);
   const cur = wallet.currency;
+  const watchlist = getWatchlist();
+  const latestByAsset = new Map<string, AiDecision>();
+  for (const d of decisions) if (!latestByAsset.has(d.asset)) latestByAsset.set(d.asset, d);
+  const allocation = [
+    { label: "Cash", value: Number(wallet.balance), kind: "cash" as const },
+    ...holdings.map((h) => ({ label: h.asset, value: h.value, kind: "asset" as const })),
+  ];
 
   return (
     <div className="space-y-6">
@@ -70,7 +80,30 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             <CardTitle>Ledger integrity</CardTitle>
           </CardHeader>
           <CardContent>
-            <VerifyPanel initial={verification} compact />
+            {/* key: remount when the server re-checks, so the panel never shows a stale result */}
+            <VerifyPanel key={"checkedAt" in verification ? verification.checkedAt : verification.error} initial={verification} compact />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>What the AI sees right now</CardTitle>
+            <Link href="/ai" className="text-sm text-primary hover:underline">
+              Is it working? →
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <SignalBoard assets={watchlist} latest={latestByAsset} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Where your money is</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AllocationBars rows={allocation} total={total} capPct={getEngineConfig().maxPositionPct} currency={cur} />
           </CardContent>
         </Card>
       </div>
@@ -97,7 +130,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Watching {getWatchlist().join(", ")}. The scheduler also runs a cycle every weekday at market open.</p>
+              <p className="text-sm text-muted-foreground">Watching {watchlist.join(", ")}. The scheduler also runs a cycle every weekday at market open.</p>
               <RunCycleButton />
             </div>
             <DepositForm currency={cur} />
