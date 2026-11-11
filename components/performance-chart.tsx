@@ -22,7 +22,7 @@ export function PerformanceChart({
   const label = (k: keyof typeof SERIES) => labels?.[k] ?? SERIES[k].label;
   const fmt = (v: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency, notation: v >= 100_000 ? "compact" : "standard", maximumFractionDigits: 0 }).format(v);
-  const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
+  const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-ZA", { day: "numeric", month: "short", timeZone: "UTC" });
 
   return (
     <div>
