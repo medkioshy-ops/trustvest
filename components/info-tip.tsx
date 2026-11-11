@@ -18,7 +18,9 @@ export function InfoTip({ term, label, className, align = "left" }: { term: Glos
         role="tooltip"
         className={cn(
           // `hidden` (not `invisible`) so closed tooltips take no space and never widen the page on phones.
-          "pointer-events-none absolute top-6 z-50 hidden w-64 max-w-[calc(100vw-3rem)] rounded-lg border bg-popover p-3 text-xs leading-relaxed font-normal text-popover-foreground normal-case shadow-lg group-focus-within:block group-hover:block",
+          // Opens on hover/tap, or on keyboard focus only (focus-visible): a mouse click must not leave it stuck
+          // open, or several tooltips pile on top of each other.
+          "pointer-events-none absolute top-6 z-50 hidden w-64 max-w-[calc(100vw-3rem)] rounded-lg border bg-popover p-3 text-xs leading-relaxed font-normal text-popover-foreground normal-case shadow-lg group-hover:block group-has-[:focus-visible]:block",
           align === "right" ? "right-0" : "left-0",
         )}
       >
