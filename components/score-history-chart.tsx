@@ -6,6 +6,9 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 // Fixed categorical order (validated dark-surface palette); colour follows the asset, never its rank.
 export const ASSET_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
 
+// Fixed zone so server and browser render identical labels (avoids hydration mismatches).
+const DISPLAY_TZ = process.env.NEXT_PUBLIC_DISPLAY_TIMEZONE || "Africa/Johannesburg";
+
 export interface ScorePoint {
   t: string; // ISO time of the cycle
   [asset: string]: number | string | null;
@@ -23,7 +26,7 @@ export function ScoreHistoryChart({
   sell: number;
 }) {
   const label = (iso: string) =>
-    new Date(iso).toLocaleString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    new Date(iso).toLocaleString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: DISPLAY_TZ });
   return (
     <div>
       <ul className="mb-3 flex flex-wrap gap-4 text-xs text-muted-foreground" aria-label="Legend">
