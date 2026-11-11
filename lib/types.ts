@@ -32,6 +32,7 @@ export interface Transaction {
 
 export interface AiDecision {
   decision_id: string;
+  wallet_id: string;
   transaction_id: string | null;
   asset: string;
   reasoning: string;
@@ -43,6 +44,7 @@ export interface AiDecision {
 
 export interface LedgerEntry {
   entry_id: string;
+  wallet_id: string;
   seq: number;
   kind: LedgerKind;
   transaction_id: string | null;
