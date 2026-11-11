@@ -14,7 +14,9 @@ export default async function DecisionsPage({ searchParams }: PageProps<"/decisi
   const sp = await searchParams;
   const filter = FILTERS.find((f) => f === sp.action) ?? "all";
   const db = await createClient();
-  const [wallet, decisions, transactions] = await Promise.all([loadWallet(db), loadDecisions(db, 300), loadTransactions(db)]);
+  const wallet = await loadWallet(db);
+  if (!wallet) return <p className="text-sm text-muted-foreground">No wallet yet — open the dashboard to finish setup.</p>;
+  const [decisions, transactions] = await Promise.all([loadDecisions(db, wallet.wallet_id, 300), loadTransactions(db, wallet.wallet_id)]);
   const txById = new Map(transactions.map((t) => [t.transaction_id, t]));
   const shown = filter === "all" ? decisions : decisions.filter((d) => d.action === filter);
   const counts = Object.fromEntries(FILTERS.map((f) => [f, f === "all" ? decisions.length : decisions.filter((d) => d.action === f).length]));
