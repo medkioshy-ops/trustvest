@@ -9,7 +9,17 @@ export const SERIES = {
   cash: { label: "Cash only", color: "#8b8b8b" },
 } as const;
 
-export function PerformanceChart({ points, currency }: { points: PerformancePoint[]; currency: string }) {
+export function PerformanceChart({
+  points,
+  currency,
+  labels,
+}: {
+  points: PerformancePoint[];
+  currency: string;
+  /** Override legend/tooltip names, e.g. for the backtest. */
+  labels?: Partial<Record<keyof typeof SERIES, string>>;
+}) {
+  const label = (k: keyof typeof SERIES) => labels?.[k] ?? SERIES[k].label;
   const fmt = (v: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency, notation: v >= 100_000 ? "compact" : "standard", maximumFractionDigits: 0 }).format(v);
   const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
@@ -22,7 +32,7 @@ export function PerformanceChart({ points, currency }: { points: PerformancePoin
             <svg width="18" height="6" aria-hidden>
               <line x1="0" y1="3" x2="18" y2="3" stroke={SERIES[k].color} strokeWidth="2" strokeDasharray={k === "cash" ? "4 3" : undefined} />
             </svg>
-            {SERIES[k].label}
+            {label(k)}
           </li>
         ))}
       </ul>
@@ -38,7 +48,7 @@ export function PerformanceChart({ points, currency }: { points: PerformancePoin
               labelStyle={{ color: "var(--foreground)" }}
               itemStyle={{ color: "var(--foreground)" }}
               labelFormatter={(d) => dayLabel(String(d))}
-              formatter={(v, name) => [fmt(Number(v)), SERIES[name as keyof typeof SERIES]?.label ?? name]}
+              formatter={(v, name) => [fmt(Number(v)), (String(name) in SERIES ? label(String(name) as keyof typeof SERIES) : String(name))]}
             />
             <Line type="monotone" dataKey="cash" stroke={SERIES.cash.color} strokeWidth={1.5} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="benchmark" stroke={SERIES.benchmark.color} strokeWidth={2} dot={false} isAnimationActive={false} />

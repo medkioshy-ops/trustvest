@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/decisions", label: "Decision log" },
   { href: "/ledger", label: "Ledger" },
+  { href: "/ai", label: "Is the AI working?" },
 ];
 
 export function NavLinks() {

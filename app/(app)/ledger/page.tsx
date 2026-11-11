@@ -5,7 +5,9 @@ import { VerifyPanel } from "@/components/verify-panel";
 import { dateTime, shortHash } from "@/lib/format";
 import { verifyLedger } from "@/lib/ledger";
 import { GENESIS_HASH } from "@/lib/ledger/hash";
+import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getUserWallet } from "@/lib/wallet-scope";
 import type { LedgerEntry } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Ledger · TrustVest" };
@@ -21,10 +23,13 @@ function describe(e: LedgerEntry) {
 }
 
 export default async function LedgerPage() {
+  const user = await requireUser();
   const db = await createClient();
+  const wallet = await getUserWallet(db, user.id);
+  if (!wallet) return <p className="text-sm text-muted-foreground">No wallet yet — open the dashboard to finish setup.</p>;
   const [verification, { data, error }] = await Promise.all([
-    verifyLedger(db).catch((e: Error) => ({ error: e.message })),
-    db.from("ledger_entry").select("*").order("seq", { ascending: false }).limit(200),
+    verifyLedger(db, wallet.wallet_id).catch((e: Error) => ({ error: e.message })),
+    db.from("ledger_entry").select("*").eq("wallet_id", wallet.wallet_id).order("seq", { ascending: false }).limit(200),
   ]);
   if (error) throw new Error(error.message);
   const entries = (data ?? []) as LedgerEntry[];
@@ -45,7 +50,7 @@ export default async function LedgerPage() {
           <CardTitle>Integrity check</CardTitle>
         </CardHeader>
         <CardContent>
-          <VerifyPanel initial={verification} />
+          <VerifyPanel key={"checkedAt" in verification ? verification.checkedAt : verification.error} initial={verification} />
         </CardContent>
       </Card>
 

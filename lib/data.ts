@@ -10,14 +10,14 @@ export async function loadWallet(db: SupabaseClient): Promise<Wallet | null> {
   return data as Wallet | null;
 }
 
-export async function loadTransactions(db: SupabaseClient): Promise<Transaction[]> {
-  const { data, error } = await db.from("transaction").select("*").order("created_at", { ascending: true }).limit(5000);
+export async function loadTransactions(db: SupabaseClient, walletId: string): Promise<Transaction[]> {
+  const { data, error } = await db.from("transaction").select("*").eq("wallet_id", walletId).order("created_at", { ascending: true }).limit(5000);
   if (error) throw new Error(`Reading transactions failed: ${error.message}`);
   return (data ?? []) as Transaction[];
 }
 
-export async function loadDecisions(db: SupabaseClient, limit: number): Promise<AiDecision[]> {
-  const { data, error } = await db.from("ai_decision").select("*").order("created_at", { ascending: false }).limit(limit);
+export async function loadDecisions(db: SupabaseClient, walletId: string, limit: number): Promise<AiDecision[]> {
+  const { data, error } = await db.from("ai_decision").select("*").eq("wallet_id", walletId).order("created_at", { ascending: false }).limit(limit);
   if (error) throw new Error(`Reading decisions failed: ${error.message}`);
   return (data ?? []) as AiDecision[];
 }

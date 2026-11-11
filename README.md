@@ -17,6 +17,7 @@ AI-driven, transparent automated investing with a tamper-evident audit ledger. F
 | FR7 | Every deposit, decision and settlement is sealed in a SHA-256 hash chain | `lib/ledger/` |
 | FR8 | "Verify now" + `GET /api/ledger/verify` recompute the chain **and** compare each sealed snapshot to the live rows, naming the exact entry and field | `lib/ledger/index.ts` |
 | FR9 | AI vs equal-weight buy-and-hold vs cash, 1W/1M/3M/All | `lib/performance.ts` |
+| AI evidence | `/ai`: backtest of the live engine vs buy-and-hold, live track record of real calls, rule-consistency check of every stored decision, score history | `app/(app)/ai/page.tsx`, `lib/backtest.ts`, `lib/track-record.ts` |
 | NFR2 | Supabase Realtime pushes changes; the page refreshes itself (indicator top-right) | `components/live-refresh.tsx` |
 | NFR4 | Append-only triggers + coverage check (every decision/finished trade must have an entry) | migrations, `verifyLedger()` |
 | NFR5 | All configuration through env vars; same build runs locally and on Vercel | `.env.example` |

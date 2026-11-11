@@ -48,6 +48,7 @@ async function applyOrderState(db: SupabaseClient, tx: Transaction, order: Broke
     if (error) throw new Error(`Settling ${tx.asset} failed: ${error.message}`);
     const settled = data as Transaction;
     await appendLedgerEntry(db, {
+      walletId: tx.wallet_id,
       kind: "settlement",
       transaction_id: settled.transaction_id,
       payload: { kind: "settlement", transaction: snapshotTransaction(settled), broker_order: order },
@@ -65,6 +66,7 @@ async function failTrade(db: SupabaseClient, tx: Transaction, reason: string, or
   if (error) throw new Error(`Marking ${tx.asset} failed: ${error.message}`);
   const failed = data as Transaction;
   await appendLedgerEntry(db, {
+    walletId: tx.wallet_id,
     kind: "settlement",
     transaction_id: failed.transaction_id,
     payload: { kind: "settlement", transaction: snapshotTransaction(failed), broker_order: order ?? null },
@@ -184,6 +186,7 @@ export async function runCycle(
       const { data: dRow, error: dErr } = await db
         .from("ai_decision")
         .insert({
+          wallet_id: wallet.wallet_id,
           transaction_id: tx?.transaction_id ?? null,
           asset,
           action: decision.action,
@@ -196,6 +199,7 @@ export async function runCycle(
       if (dErr) throw new Error(`Recording decision failed: ${dErr.message}`);
       const saved = dRow as AiDecision;
       await appendLedgerEntry(db, {
+        walletId: wallet.wallet_id,
         kind: "decision",
         decision_id: saved.decision_id,
         payload: {

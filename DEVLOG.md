@@ -39,3 +39,13 @@ Material for the project report. One entry per completed increment.
   - Two cycles started at the same instant (cron + button) could both trade the same asset before either order is recorded; acceptable for one user, fix with an advisory lock if scheduling becomes more frequent.
   - Vercel Hobby cron = once a day. Stock market orders placed outside US hours stay pending and are settled by the next cycle.
   - Interview findings (Phase 3 Table 1) are still placeholders in the report.
+
+## 2026-11-11 — Step 3: per-wallet ledger, AI evidence page, dashboard graphs
+
+- **Bug fixed — false "Tampering detected" + privacy leak.** Migration 003 made wallets and transactions per user, but `ai_decision` and `ledger_entry` stayed shared. Users could read each other's decisions and ledger, and verification flagged other users' (RLS-hidden) transactions as "no longer exists". Migration 004 gives every wallet its own decision log and its own genesis-linked hash chain (`unique (wallet_id, previous_hash)`), with owner-only RLS. Because a shared chain cannot be split without rewriting hashes, 004 resets prototype activity (simulated trades/decisions/ledger) and keeps accounts.
+- **Bug fixed — stale integrity tile.** The dashboard's "Ledger integrity" card kept its first result after deposits/cycles; it now remounts whenever the server re-verifies.
+- **Lint errors cleared** (setState-in-effect in the OAuth hint, prefer-const, unused import). Integration tests repaired (they had been failing since 003 because the test DB had no `auth` schema).
+- **Dashboard graphs, each answering one question:** "What the AI sees right now" (each asset's latest score on −1…+1 with the buy/sell lines — how close it is to trading) and "Where your money is" (cash vs holdings with the 30% per-asset cap line).
+- **New page `/ai` — "Is the AI working?"** (1) Backtest: the production `decide()` replayed once per daily bar over 3/6/12 months vs equal-weight buy-and-hold, with return, worst drop, win rate of closed trades; (2) live track record: did each executed BUY/SELL's price move its way (unmoved calls are "waiting", not wrong); (3) consistency: every stored decision's score is recomputed from its stored inputs and its action checked against the rules; (4) score history across cycles vs the trade lines.
+- **Limits stated on the page:** the backtest treats sentiment as neutral (historical headlines are not stored) and fills at the daily close without fees; in simulated mode it runs on generated prices.
+- **Verified:** 38 unit + 12 integration tests (incl. a two-account isolation test that also checks RLS as the signed-in role), lint clean, `next build`, browser run of deposit → two cycles → dashboard, /ai and ledger with no console errors.

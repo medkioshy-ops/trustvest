@@ -1,5 +1,4 @@
 // Quick route smoke test against a running dev server (default http://localhost:3000).
-import { pathToFileURL } from "node:url";
 
 const base = process.env.SPOT_CHECK_URL || "http://localhost:3000";
 const routes = ["/", "/login", "/join", "/dashboard", "/decisions", "/ledger"];

@@ -72,7 +72,13 @@ describe.skipIf(!URL)("decision cycle against Postgres", () => {
         if not exists (select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
         if not exists (select 1 from pg_roles where rolname='service_role') then create role service_role nologin bypassrls; end if;
       end $$;
-      grant usage on schema public to anon, authenticated, service_role;`);
+      grant usage on schema public to anon, authenticated, service_role;
+      -- Minimal stand-in for Supabase's auth schema so the RLS policies can be created and exercised.
+      create schema if not exists auth;
+      create table if not exists auth.users (id uuid primary key, created_at timestamptz not null default now());
+      create or replace function auth.uid() returns uuid language sql stable
+        as $f$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $f$;
+      grant usage on schema auth to anon, authenticated, service_role;`);
     for (const f of readdirSync(MIGRATIONS).sort()) await pool.query(readFileSync(path.join(MIGRATIONS, f), "utf8"));
     const w = await pool.query(`insert into wallet (currency, user_id) values ('USD', $1) returning wallet_id`, [TEST_USER_ID]);
     walletId = w.rows[0].wallet_id as string;
@@ -90,7 +96,7 @@ describe.skipIf(!URL)("decision cycle against Postgres", () => {
     const { data, error } = await db.rpc("make_deposit", { p_user_id: TEST_USER_ID, p_amount: 10_000 });
     expect(error).toBeNull();
     const tx = data as Transaction;
-    const e = await appendLedgerEntry(db, { kind: "deposit", transaction_id: tx.transaction_id, payload: { kind: "deposit", transaction: snapshotTransaction(tx) } });
+    const e = await appendLedgerEntry(db, { walletId, kind: "deposit", transaction_id: tx.transaction_id, payload: { kind: "deposit", transaction: snapshotTransaction(tx) } });
     expect(e.previous_hash).toBe("0".repeat(64));
     expect(await balance()).toBe(10_000);
   });
@@ -159,11 +165,42 @@ describe.skipIf(!URL)("decision cycle against Postgres", () => {
   });
 
   it("verifies the untouched ledger: 100% coverage, intact chain", async () => {
-    const r = await verifyLedger(db);
+    const r = await verifyLedger(db, walletId);
     const counts = (await pool.query(`select (select count(*) from ai_decision) d, (select count(*) from transaction where status in ('released','failed')) t`)).rows[0];
     expect(r.problems).toEqual([]);
     expect(r.ok).toBe(true);
     expect(r.entryCount).toBe(Number(counts.d) + Number(counts.t));
+  });
+
+  it("keeps a second account's decisions and chain completely separate", async () => {
+    const OTHER = "00000000-0000-4000-8000-000000000002";
+    const w2 = (await pool.query(`insert into wallet (currency, user_id) values ('USD', $1) returning wallet_id`, [OTHER])).rows[0].wallet_id as string;
+    const { data } = await db.rpc("make_deposit", { p_user_id: OTHER, p_amount: 5_000 });
+    const tx = data as Transaction;
+    const first = await appendLedgerEntry(db, { walletId: w2, kind: "deposit", transaction_id: tx.transaction_id, payload: { kind: "deposit", transaction: snapshotTransaction(tx) } });
+    expect(first.previous_hash).toBe("0".repeat(64)); // own genesis
+    market.trend = { AAPL: 0.01, MSFT: 0, TSLA: 0 };
+    await runCycle(db, w2, market);
+
+    const [mine, theirs] = [await verifyLedger(db, walletId), await verifyLedger(db, w2)];
+    expect(mine.problems).toEqual([]);
+    expect(theirs.problems).toEqual([]);
+    const own = Number((await pool.query(`select count(*) from ledger_entry where wallet_id = $1`, [walletId])).rows[0].count);
+    expect(mine.entryCount).toBe(own);
+    // RLS: signed in as the first user, only that user's decisions and ledger are visible.
+    const c = await pool.connect();
+    try {
+      await c.query("begin");
+      await c.query(`select set_config('request.jwt.claim.sub', $1, true)`, [TEST_USER_ID]);
+      await c.query("set local role authenticated");
+      const vis = (await c.query(`select (select count(distinct wallet_id) from ai_decision) d, (select count(distinct wallet_id) from ledger_entry) l, (select count(*) from ledger_entry) n`)).rows[0];
+      expect([Number(vis.d), Number(vis.l), Number(vis.n)]).toEqual([1, 1, own]);
+    } finally {
+      await c.query("rollback");
+      c.release();
+    }
+    const leaked = (await pool.query(`select count(*) from ai_decision d join transaction t using (transaction_id) where d.wallet_id <> t.wallet_id`)).rows[0].count;
+    expect(Number(leaked)).toBe(0);
   });
 
   it("the ledger refuses UPDATE and DELETE", async () => {
@@ -176,7 +213,7 @@ describe.skipIf(!URL)("decision cycle against Postgres", () => {
     await pool.query(`alter table ai_decision disable trigger ai_decision_append_only;
       update ai_decision set reasoning = 'Totally safe trade' where decision_id = '${rows[0].decision_id}';
       alter table ai_decision enable trigger ai_decision_append_only;`);
-    const r = await verifyLedger(db);
+    const r = await verifyLedger(db, walletId);
     expect(r.ok).toBe(false);
     expect(r.problems).toEqual([expect.objectContaining({ problem: "record_mismatch", detail: expect.stringMatching(/reasoning/) })]);
   });
@@ -186,7 +223,7 @@ describe.skipIf(!URL)("decision cycle against Postgres", () => {
       update ledger_entry set payload = jsonb_set(payload, '{transaction,amount}', '999999') where seq = 1;
       delete from ledger_entry where seq = 4;
       alter table ledger_entry enable trigger ledger_entry_append_only;`);
-    const r = await verifyLedger(db);
+    const r = await verifyLedger(db, walletId);
     const kinds = r.problems.map((p) => `${p.seq}:${p.problem}`);
     expect(kinds).toContain("1:hash_mismatch");
     expect(kinds).toContain("5:broken_link");

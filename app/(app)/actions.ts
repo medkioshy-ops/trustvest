@@ -37,6 +37,7 @@ export async function depositAction(_prev: DepositState, formData: FormData): Pr
     if (error) return { error: error.message };
     const tx = data as Transaction;
     await appendLedgerEntry(db, {
+      walletId: tx.wallet_id,
       kind: "deposit",
       transaction_id: tx.transaction_id,
       payload: { kind: "deposit", transaction: snapshotTransaction(tx) },
@@ -49,10 +50,11 @@ export async function depositAction(_prev: DepositState, formData: FormData): Pr
 }
 
 export async function verifyLedgerAction(): Promise<VerificationResult | { error: string }> {
-  await requireUser();
+  const user = await requireUser();
   try {
+    const wallet = await requireUserWallet(user);
     // Read-only check, run with the user's own (RLS read-only) session.
-    return await verifyLedger(await createClient());
+    return await verifyLedger(await createClient(), wallet.wallet_id);
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
