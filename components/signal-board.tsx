@@ -2,6 +2,7 @@
 // −1…+1 scale. Bars that cross a dashed line are what trigger a BUY or SELL.
 import { Badge } from "@/components/ui/badge";
 import { relative } from "@/lib/format";
+import { assetName } from "@/lib/plain-language";
 import type { AiDecision } from "@/lib/types";
 
 const toPct = (v: number) => ((Math.max(-1, Math.min(1, v)) + 1) / 2) * 100;
@@ -19,8 +20,8 @@ export function SignalBoard({ assets, latest }: { assets: string[]; latest: Map<
           if (!d || !s) {
             return (
               <li key={asset} className="grid grid-cols-[5.5rem_1fr] items-center gap-3 text-sm">
-                <span className="font-medium">{asset}</span>
-                <span className="text-xs text-muted-foreground">No decision yet — run a cycle.</span>
+                <span className="font-medium" title={asset}>{assetName(asset)}</span>
+                <span className="text-xs text-muted-foreground">No opinion yet — press &ldquo;Run the AI now&rdquo;.</span>
               </li>
             );
           }
@@ -32,7 +33,7 @@ export function SignalBoard({ assets, latest }: { assets: string[]; latest: Map<
           const toBuy = score < buy ? `${(buy - score).toFixed(2)} below buy line` : "past buy line";
           return (
             <li key={asset} className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-3 text-sm">
-              <span className="font-medium">{asset}</span>
+              <span className="font-medium" title={asset}>{assetName(asset)}</span>
               <div
                 className="relative h-6"
                 title={`${asset}: score ${score} (momentum ${s.momentum.score}, sentiment ${s.sentiment.score}) — ${toBuy}`}
@@ -45,10 +46,10 @@ export function SignalBoard({ assets, latest }: { assets: string[]; latest: Map<
               </div>
               <span className="flex items-center gap-2 tabular-nums">
                 <span className="w-12 text-right font-mono text-xs">{score > 0 ? "+" : ""}{score.toFixed(2)}</span>
-                <Badge tone={d.action}>{d.action}</Badge>
+                <Badge tone={d.action}>{d.action === "hold" ? "waiting" : d.action === "buy" ? "bought" : "sold"}</Badge>
               </span>
               <span className="col-span-2 col-start-2 -mt-2 text-xs text-muted-foreground">
-                momentum {s.momentum.score > 0 ? "+" : ""}{s.momentum.score.toFixed(2)} · news {s.sentiment.score > 0 ? "+" : ""}
+                price trend {s.momentum.score > 0 ? "+" : ""}{s.momentum.score.toFixed(2)} · news mood {s.sentiment.score > 0 ? "+" : ""}
                 {s.sentiment.score.toFixed(2)} ({s.sentiment.headline_count} headlines) · {relative(d.created_at)}
               </span>
             </li>
@@ -56,14 +57,14 @@ export function SignalBoard({ assets, latest }: { assets: string[]; latest: Map<
         })}
       </ul>
       <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span>Scale −1 (strong sell) to +1 (strong buy)</span>
+        <span>Left = leaning sell · right = leaning buy</span>
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block h-3 border-l border-dashed border-emerald-300" /> buy line {buy}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block h-3 border-l border-dashed border-orange-300" /> sell line {sell}
         </span>
-        <span>A bar must cross a line before the AI trades.</span>
+        <span>Between the lines, the AI waits.</span>
       </p>
     </div>
   );
